@@ -64,6 +64,9 @@ Apri `examples/pacman/index.html` nel browser per vedere Quadre in azione.
 | **v1.0** | Runtime completo, playground online |
 
 ---
+> **Nota:** il runtime interprete per file `.qde` è in sviluppo — previsto per v0.2.
+> Gli esempi nella cartella `examples/` mostrano il linguaggio in azione
+> tramite una implementazione dimostrativa.
 
 ## File `.qde`
 
