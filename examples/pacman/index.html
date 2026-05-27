@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacman — Quadre Language v0.1</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0d0d1a;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 14px;
+            color: #4466ff;
+            letter-spacing: 3px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: #444466;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        #hud {
+            display: flex;
+            gap: 24px;
+            background: #1a1a2e;
+            border: 1px solid #2a2a4e;
+            border-radius: 6px;
+            padding: 8px 20px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .hud-item { color: #666688; }
+        .hud-item span { color: #ffee44; font-weight: bold; }
+
+        #screen {
+            background: #000;
+            border: 1px solid #2a2a4e;
+            border-radius: 6px;
+            padding: 8px;
+            display: grid;
+            gap: 0;
+        }
+
+        .cell {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .cell-muro          { color: #4466ff; }
+        .cell-pallino       { color: #ffee44; font-size: 8px; }
+        .cell-pallino-grande{ color: #ff8800; font-size: 14px; }
+        .cell-pacman        { color: #ffee00; font-size: 18px; }
+        .cell-fantasma-0    { color: #ff4444; }
+        .cell-fantasma-1    { color: #ff88cc; }
+        .cell-fantasma-2    { color: #44ccff; }
+        .cell-fantasma-3    { color: #ffaa44; }
+        .cell-vuoto         { color: transparent; }
+
+        #msg {
+            height: 24px;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #ff8800;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        #controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        button {
+            background: #1a1a2e;
+            border: 1px solid #4466ff;
+            color: #4466ff;
+            padding: 8px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #4466ff;
+            color: #fff;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #444466;
+            letter-spacing: 1px;
+        }
+
+        .potenziato { animation: blink 0.3s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+<h1>Quadre Language</h1>
+<div class="subtitle">pacman.qde — demo v0.1</div>
+
+<div id="hud">
+    <div class="hud-item">PUNTEGGIO <span id="h-punt">0</span></div>
+    <div class="hud-item">VITE <span id="h-vite">3</span></div>
+    <div class="hud-item">LIVELLO <span id="h-liv">1</span></div>
+    <div class="hud-item">PALLINI <span id="h-pall">0</span></div>
+</div>
+
+<div id="screen"></div>
+<div id="msg"></div>
+
+<div id="controls">
+    <button id="btn-start">▶ AVVIA</button>
+    <button id="btn-reset">↺ RESET</button>
+</div>
+
+<div id="status">premi AVVIA — usa i tasti freccia</div>
+
+<script src="../../runtime/quadre-runtime.js"></script>
+<script>
+// ================================================================
+// PROGRAMMA PACMAN IN QUADRE — traduzione manuale per il runtime
+// Questo file implementa pacman.qde usando QuadreRuntime
+// ================================================================
+
+const runtime = new QuadreRuntime();
+
+// ----------------------------------------------------------------
+// COSTANTI
+// ----------------------------------------------------------------
+runtime.defineConst('VELOCE', 1);
+runtime.defineConst('NORMALE', 6);
+runtime.defineConst('LENTO', 12);
+runtime.defineConst('VUOTO', 0);
+runtime.defineConst('MURO', 1);
+runtime.defineConst('PALLINO', 2);
+runtime.defineConst('PALLINO_GRANDE', 3);
+runtime.defineConst('PACMAN_C', 4);
+runtime.defineConst('FANTASMA_C', 5);
+
+const C = runtime.constants;
+
+// ----------------------------------------------------------------
+// MAPPA BASE
+// ----------------------------------------------------------------
+const MAPPA_BASE = [
+    [1,1,1,1,1,1,1,1,1,1],
+    [1,0,2,0,0,0,0,2,0,1],
+    [1,0,0,0,1,1,0,0,0,1],
+    [1,2,0,0,0,0,0,0,2,1],
+    [1,0,0,1,0,0,1,0,0,1],
+    [1,0,0,0,0,0,0,0,0,1],
+    [1,0,2,0,1,1,0,2,0,1],
+    [1,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1]
+];
+
+// ----------------------------------------------------------------
+// ENTITY
+// ----------------------------------------------------------------
+runtime.defineEntity('runtime_cfg', { tick_rate: 10 });
+
+runtime.defineEntity('onstage', {
+    livello: 1,
+    stato: 'in_corso',
+    tick: 0,
+    collisione_muro: false
+});
+
+runtime.defineEntity('mappa', {
+    griglia: MAPPA_BASE.map(r => [...r])
+});
+
+// ----------------------------------------------------------------
+// OBJECT TEMPLATES E ISTANZE
+// ----------------------------------------------------------------
+runtime.defineObject('Pacman', { x: 1, y: 1, vite: 3, punteggio: 0, potenziato: false });
+runtime.defineObject('Fantasma', { x: 0, y: 0, attivo: false, velocita: C.NORMALE, livello_attivo: 1, errore: 3 });
+
+runtime.createInstance('Pacman', 'giocatore', { x: 1, y: 1, vite: 3, punteggio: 0, potenziato: false });
+runtime.createInstance('Fantasma', 'blinky', { x: 4, y: 4, attivo: false, velocita: C.NORMALE, livello_attivo: 1, errore: 2 });
+runtime.createInstance('Fantasma', 'pinky',  { x: 5, y: 4, attivo: false, velocita: C.NORMALE, livello_attivo: 1, errore: 4 });
+runtime.createInstance('Fantasma', 'inky',   { x: 4, y: 5, attivo: false, velocita: C.LENTO,   livello_attivo: 2, errore: 5 });
+runtime.createInstance('Fantasma', 'clyde',  { x: 5, y: 5, attivo: false, velocita: C.LENTO,   livello_attivo: 3, errore: 7 });
+
+// Attiva fantasmi del livello 1
+runtime.getInstances('Fantasma').forEach(f => {
+    if (f.livello_attivo <= 1) f.attivo = true;
+});
+
+// ----------------------------------------------------------------
+// SHORTCUTS
+// ----------------------------------------------------------------
+const giocatore = () => runtime.instances.Pacman.giocatore;
+const onstage   = () => runtime.entities.onstage;
+const griglia   = () => runtime.entities.mappa.griglia;
+const fantasmi  = () => runtime.getInstances('Fantasma');
+
+function countPallini() {
+    return griglia().flat().filter(v => v === C.PALLINO || v === C.PALLINO_GRANDE).length;
+}
+
+// ----------------------------------------------------------------
+// JOB: controlla_cella
+// ----------------------------------------------------------------
+runtime.jobs['controlla_cella'] = () => {
+    const g = giocatore();
+    const v = griglia()[g.y][g.x];
+
+    if (v === C.PALLINO) {
+        griglia()[g.y][g.x] = C.VUOTO;
+        g.punteggio += 100;
+    } else if (v === C.PALLINO_GRANDE) {
+        griglia()[g.y][g.x] = C.VUOTO;
+        g.punteggio += 300;
+        g.potenziato = true;
+        setTimeout(() => { g.potenziato = false; }, 5000);
+    }
+
+    if (countPallini() === 0) {
+        runtime.execExpose('sistema.livello_completato', {});
+    }
+};
+
+// ----------------------------------------------------------------
+// JOB: controlla_collisioni
+// ----------------------------------------------------------------
+runtime.jobs['controlla_collisioni'] = () => {
+    const g = giocatore();
+    fantasmi().forEach(f => {
+        if (!f.attivo) return;
+        if (f.x === g.x && f.y === g.y) {
+            if (g.potenziato) {
+                f.attivo = false;
+                g.punteggio += 500;
+            } else {
+                runtime.execJob('pacman_muore', {});
+            }
+        }
+    });
+};
+
+// ----------------------------------------------------------------
+// JOB: pacman_muore
+// ----------------------------------------------------------------
+runtime.jobs['pacman_muore'] = () => {
+    const g = giocatore();
+    g.vite--;
+    if (g.vite <= 0) {
+        runtime.execExpose('sistema.game_over', {});
+    } else {
+        g.x = 1; g.y = 1;
+        g.potenziato = false;
+        setMsg('VITA PERSA!');
+        setTimeout(() => setMsg(''), 1500);
+    }
+};
+
+// ----------------------------------------------------------------
+// JOB: nuovo_livello
+// ----------------------------------------------------------------
+runtime.jobs['nuovo_livello'] = () => {
+    runtime.entities.mappa.griglia = MAPPA_BASE.map(r => [...r]);
+    const g = giocatore();
+    g.x = 1; g.y = 1;
+    g.potenziato = false;
+    onstage().tick = 0;
+    runtime.tick = 0;
+
+    fantasmi().forEach(f => {
+        const init = f._initial;
+        f.attivo = onstage().livello >= f.livello_attivo;
+        if (f.attivo) { f.x = init.x; f.y = init.y; }
+    });
+
+    setMsg('LIVELLO ' + onstage().livello + '!');
+    setTimeout(() => setMsg(''), 1500);
+};
+
+// ----------------------------------------------------------------
+// JOB: fine_partita
+// ----------------------------------------------------------------
+runtime.jobs['fine_partita'] = () => {
+    onstage().stato = 'game_over';
+    running = false;
+    runtime.stop();
+    setMsg('GAME OVER');
+    document.getElementById('status').textContent = 'premi RESET per ricominciare';
+};
+
+// ----------------------------------------------------------------
+// ROUTINE: movimento_valido
+// ----------------------------------------------------------------
+runtime.routines['movimento_valido'] = ({ input }) => {
+    const nx = input.nuovo_x;
+    const ny = input.nuovo_y;
+    if (ny < 0 || ny >= griglia().length) return;
+    if (nx < 0 || nx >= griglia()[0].length) return;
+    if (griglia()[ny][nx] === C.MURO) return;
+    giocatore().x = nx;
+    giocatore().y = ny;
+    runtime.execJob('controlla_cella', {});
+};
+
+// ----------------------------------------------------------------
+// ROUTINE: muovi_fantasma
+// ----------------------------------------------------------------
+runtime.routines['muovi_fantasma'] = ({ input }) => {
+    const f = input.bersaglio;
+    const g = giocatore();
+    const dado = Math.floor(Math.random() * 10) + 1;
+    const asse = Math.random() < 0.5 ? 'x' : 'y';
+    let nx = f.x, ny = f.y;
+
+    if (dado > f.errore) {
+        if (asse === 'x') nx += f.x > g.x ? -1 : 1;
+        else              ny += f.y > g.y ? -1 : 1;
+    } else {
+        if (asse === 'x') nx += Math.floor(Math.random() * 3) - 1;
+        else              ny += Math.floor(Math.random() * 3) - 1;
+    }
+
+    nx = Math.max(0, Math.min(griglia()[0].length - 1, nx));
+    ny = Math.max(0, Math.min(griglia().length - 1, ny));
+
+    if (griglia()[ny][nx] !== C.MURO) { f.x = nx; f.y = ny; }
+};
+
+// ----------------------------------------------------------------
+// WHEN: frecce direzionali
+// ----------------------------------------------------------------
+runtime.registerWhen('periferiche.keyboard.arrow', null, ({ event }) => {
+    if (onstage().stato !== 'in_corso') return;
+    runtime.execRoutine('movimento_valido', {
+        nuovo_x: String(giocatore().x + event.delta_x),
+        nuovo_y: String(giocatore().y + event.delta_y)
+    }, {});
+    renderHUD();
+    renderScreen();
+});
+
+// ----------------------------------------------------------------
+// WHEN: runtime.tick
+// ----------------------------------------------------------------
+runtime.registerWhen('runtime.tick', null, () => {
+    if (onstage().stato !== 'in_corso') return;
+    const tick = runtime.tick;
+
+    fantasmi().forEach(f => {
+        if (f.attivo && tick % f.velocita === 0) {
+            runtime.execRoutine('muovi_fantasma', {}, { input: { bersaglio: f } });
+        }
+    });
+
+    runtime.execJob('controlla_collisioni', {});
+    renderHUD();
+    renderScreen();
+});
+
+// ----------------------------------------------------------------
+// WHEN: sistema.*
+// ----------------------------------------------------------------
+runtime.registerWhen('sistema.*', null, ({ event }) => {
+    switch (event.type) {
+        case 'sistema.livello_completato':
+            onstage().livello++;
+            runtime.execJob('nuovo_livello', {});
+            break;
+        case 'sistema.game_over':
+            runtime.execJob('fine_partita', {});
+            break;
+        case 'sistema.pacman_potenziato':
+            setTimeout(() => { giocatore().potenziato = false; }, 5000);
+            break;
+    }
+});
+
+// ----------------------------------------------------------------
+// RENDERING
+// ----------------------------------------------------------------
+
+// Mappa fantasmi per colore
+const FANTASMA_COLORS = ['cell-fantasma-0', 'cell-fantasma-1', 'cell-fantasma-2', 'cell-fantasma-3'];
+
+function renderHUD() {
+    const g = giocatore();
+    document.getElementById('h-punt').textContent = g.punteggio;
+    document.getElementById('h-vite').textContent = g.vite;
+    document.getElementById('h-liv').textContent  = onstage().livello;
+    document.getElementById('h-pall').textContent = countPallini();
+}
+
+function renderScreen() {
+    const g = giocatore();
+    const grid = griglia();
+    const rows = grid.length;
+    const cols = grid[0].length;
+
+    // Costruisce display con overlay oggetti
+    const display = grid.map(r => [...r]);
+    display[g.y][g.x] = C.PACMAN_C;
+
+    const activeFantasmi = fantasmi().filter(f => f.attivo);
+    activeFantasmi.forEach(f => {
+        display[f.y][f.x] = C.FANTASMA_C;
+    });
+
+    const screenEl = document.getElementById('screen');
+    screenEl.style.gridTemplateColumns = `repeat(${cols}, 28px)`;
+    screenEl.style.gridTemplateRows    = `repeat(${rows}, 28px)`;
+
+    const total = rows * cols;
+    if (screenEl.children.length !== total) {
+        screenEl.innerHTML = '';
+        for (let i = 0; i < total; i++) {
+            const d = document.createElement('div');
+            d.className = 'cell';
+            screenEl.appendChild(d);
+        }
+    }
+
+    let idx = 0;
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const v = display[r][c];
+            const cell = screenEl.children[idx++];
+            cell.className = 'cell';
+
+            switch (v) {
+                case C.MURO:
+                    cell.textContent = '█';
+                    cell.classList.add('cell-muro');
+                    break;
+                case C.PALLINO:
+                    cell.textContent = '·';
+                    cell.classList.add('cell-pallino');
+                    break;
+                case C.PALLINO_GRANDE:
+                    cell.textContent = '●';
+                    cell.classList.add('cell-pallino-grande');
+                    break;
+                case C.PACMAN_C:
+                    cell.textContent = g.potenziato ? '😮' : 'C';
+                    cell.classList.add('cell-pacman');
+                    if (g.potenziato) cell.classList.add('potenziato');
+                    break;
+                case C.FANTASMA_C: {
+                    // Trova quale fantasma è in questa cella
+                    const fi = activeFantasmi.findIndex(f => f.x === c && f.y === r);
+                    cell.textContent = 'G';
+                    cell.classList.add(FANTASMA_COLORS[fi % 4] || 'cell-fantasma-0');
+                    break;
+                }
+                default:
+                    cell.textContent = '';
+                    cell.classList.add('cell-vuoto');
+            }
+        }
+    }
+}
+
+function setMsg(text) {
+    document.getElementById('msg').textContent = text;
+}
+
+// ----------------------------------------------------------------
+// CONTROLLI
+// ----------------------------------------------------------------
+let running = false;
+
+document.getElementById('btn-start').addEventListener('click', () => {
+    if (running) return;
+    running = true;
+    onstage().stato = 'in_corso';
+    runtime.start(10);
+    document.getElementById('status').textContent = 'usa i tasti freccia per muovere Pacman';
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+    running = false;
+    runtime.stop();
+    runtime.reset();
+    // Re-inizializza la mappa
+    runtime.entities.mappa.griglia = MAPPA_BASE.map(r => [...r]);
+    // Re-inizializza istanze
+    runtime.getInstances('Fantasma').forEach(f => {
+        if (f.livello_attivo <= 1) f.attivo = true;
+        else f.attivo = false;
+    });
+    onstage().stato = 'in_corso';
+    setMsg('');
+    renderHUD();
+    renderScreen();
+    document.getElementById('status').textContent = 'premi AVVIA per giocare';
+});
+
+document.addEventListener('keydown', e => {
+    if (!running) return;
+    const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    if (arrows.includes(e.key)) {
+        e.preventDefault();
+        runtime.handleKeydown(e.key);
+    }
+});
+
+// ----------------------------------------------------------------
+// AVVIO INIZIALE
+// ----------------------------------------------------------------
+renderHUD();
+renderScreen();
+</script>
+
+</body>
+</html>

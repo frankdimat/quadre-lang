@@ -1,0 +1,305 @@
+<!-- ============================================================ -->
+<!-- PACMAN — Quadre Language v0.1                               -->
+<!-- file: pacman.qde                                            -->
+<!-- Esempio dimostrativo del linguaggio Quadre                  -->
+<!-- ============================================================ -->
+
+<!-- COSTANTI VELOCITA -->
+<const VELOCE = 1></const>
+<const NORMALE = 6></const>
+<const LENTO = 12></const>
+
+<!-- COSTANTI MAPPA -->
+<const VUOTO = 0></const>
+<const MURO = 1></const>
+<const PALLINO = 2></const>
+<const PALLINO_GRANDE = 3></const>
+<const PACMAN_C = 4></const>
+<const FANTASMA_C = 5></const>
+
+<!-- ============================================================ -->
+<!-- ENTITY — stato globale                                       -->
+<!-- ============================================================ -->
+
+<entity runtime>
+    <var tick_rate: int = 60></var>
+</entity>
+
+<entity onstage>
+    <var livello: int = 1></var>
+    <var stato: string = "in_corso"></var>
+    <var tick: int = 0></var>
+    <computed pallini_rimasti = count(mappa.griglia == PALLINO)></computed>
+    <var collisione_muro: bool = false></var>
+</entity>
+
+<entity mappa>
+    <var griglia: matrix = [
+        [1,1,1,1,1,1,1,1,1,1],
+        [1,0,2,0,0,0,0,2,0,1],
+        [1,0,0,0,1,1,0,0,0,1],
+        [1,2,0,0,0,0,0,0,2,1],
+        [1,0,0,1,0,0,1,0,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,0,2,0,1,1,0,2,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1]
+    ]></var>
+</entity>
+
+<!-- ============================================================ -->
+<!-- OBJECT — template elementi fisici                            -->
+<!-- ============================================================ -->
+
+<object Pacman>
+    <var x: int></var>
+    <var y: int></var>
+    <var vite: int = 3></var>
+    <var punteggio: int = 0></var>
+    <var potenziato: bool = false></var>
+</object>
+
+<object Fantasma>
+    <var x: int></var>
+    <var y: int></var>
+    <var attivo: bool = false></var>
+    <var velocita: int = NORMALE></var>
+    <var livello_attivo: int = 1></var>
+    <var errore: int = 3></var>
+</object>
+
+<!-- ============================================================ -->
+<!-- ISTANZE                                                      -->
+<!-- ============================================================ -->
+
+<Pacman giocatore;
+    x=1; y=1;
+    vite=3;
+    punteggio=0;
+    potenziato=false>
+</Pacman>
+
+<Fantasma blinky; x=4; y=4; attivo=false; velocita=NORMALE; livello_attivo=1; errore=2></Fantasma>
+<Fantasma pinky;  x=5; y=4; attivo=false; velocita=NORMALE; livello_attivo=1; errore=4></Fantasma>
+<Fantasma inky;   x=4; y=5; attivo=false; velocita=LENTO;   livello_attivo=2; errore=5></Fantasma>
+<Fantasma clyde;  x=5; y=5; attivo=false; velocita=LENTO;   livello_attivo=3; errore=7></Fantasma>
+
+<!-- ============================================================ -->
+<!-- SECTION HUD                                                  -->
+<!-- ============================================================ -->
+
+<section HUD>
+    <container intestazione color="#1a1a2e">
+        <text label_p value="PUNTEGGIO:"></text>
+        <text punteggio bind=giocatore.punteggio></text>
+        <text label_v value="VITE:"></text>
+        <text vite bind=giocatore.vite></text>
+        <text label_l value="LIVELLO:"></text>
+        <text livello bind=onstage.livello></text>
+    </container>
+
+    <container schermo color="#000000">
+        <text griglia
+            bind=mappa.griglia
+            render="matrix"
+            overlay=Pacman.instances; Fantasma.instances>
+        </text>
+    </container>
+
+    <container stato_gioco color="#1a1a2e">
+        <text messaggio bind=onstage.stato></text>
+    </container>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION LOGICA                                               -->
+<!-- ============================================================ -->
+
+<section logica>
+
+    <!-- Movimento Pacman con controllo muro -->
+    <routine movimento_valido>
+        [set onstage.collisione_muro =
+            (mappa.griglia[input.nuovo_x][input.nuovo_y] == MURO)]
+        [test condition=(onstage.collisione_muro == false);
+            <then>
+                [set giocatore.x = input.nuovo_x]
+                [set giocatore.y = input.nuovo_y]
+                [job controlla_cella]
+            </then>]
+    </routine>
+
+    <!-- Controlla cosa c'è nella cella di Pacman -->
+    <job controlla_cella>
+        [match target=mappa.griglia[giocatore.x][giocatore.y];
+            <case value=PALLINO>
+                [set mappa.griglia[giocatore.x][giocatore.y] = VUOTO]
+                [set giocatore.punteggio = (giocatore.punteggio + 100)]
+            </case>
+            <case value=PALLINO_GRANDE>
+                [set mappa.griglia[giocatore.x][giocatore.y] = VUOTO]
+                [set giocatore.punteggio = (giocatore.punteggio + 300)]
+                [set giocatore.potenziato = true]
+                [expose sistema.pacman_potenziato]
+            </case>]
+        [test condition=(onstage.pallini_rimasti == 0);
+            <then>
+                [expose sistema.livello_completato]
+            </then>]
+    </job>
+
+    <!-- Controlla collisioni Pacman/Fantasma -->
+    <job controlla_collisioni>
+        [cycle source=Fantasma.instances; item=f;
+            <loop>
+                [test condition=(f.attivo == true
+                             AND f.x == giocatore.x
+                             AND f.y == giocatore.y);
+                    <then>
+                        [test condition=(giocatore.potenziato == true);
+                            <then>
+                                [set f.attivo = false]
+                                [set giocatore.punteggio = (giocatore.punteggio + 500)]
+                            </then>
+                            <else>
+                                [job pacman_muore]
+                            </else>]
+                    </then>]
+            </loop>]
+    </job>
+
+    <!-- Pacman perde una vita -->
+    <job pacman_muore>
+        [set giocatore.vite = (giocatore.vite - 1)]
+        [test condition=(giocatore.vite == 0);
+            <then>
+                [expose sistema.game_over]
+            </then>
+            <else>
+                [reset giocatore.x]
+                [reset giocatore.y]
+                [set giocatore.potenziato = false]
+            </else>]
+    </job>
+
+    <!-- Muovi fantasma con errore casuale su asse singolo -->
+    <routine muovi_fantasma>
+        [random dado; range=(1..10)]
+        [random asse; range=(0..1)]
+        [test condition=(dado > input.bersaglio.errore);
+            <then>
+                <!-- insegue Pacman su un solo asse -->
+                [test condition=(asse == 0);
+                    <then>
+                        [test condition=(input.bersaglio.x > giocatore.x);
+                            <then>
+                                [set input.bersaglio.x = (input.bersaglio.x - 1)]
+                            </then>
+                            <else>
+                                [set input.bersaglio.x = (input.bersaglio.x + 1)]
+                            </else>]
+                    </then>
+                    <else>
+                        [test condition=(input.bersaglio.y > giocatore.y);
+                            <then>
+                                [set input.bersaglio.y = (input.bersaglio.y - 1)]
+                            </then>
+                            <else>
+                                [set input.bersaglio.y = (input.bersaglio.y + 1)]
+                            </else>]
+                    </else>]
+            </then>
+            <else>
+                <!-- movimento casuale su un solo asse -->
+                [test condition=(asse == 0);
+                    <then>
+                        [random delta; range=(-1..1)]
+                        [set input.bersaglio.x = (input.bersaglio.x + delta)]
+                    </then>
+                    <else>
+                        [random delta; range=(-1..1)]
+                        [set input.bersaglio.y = (input.bersaglio.y + delta)]
+                    </else>]
+            </else>]
+        <!-- controllo muro dopo movimento -->
+        [test condition=(mappa.griglia[input.bersaglio.x][input.bersaglio.y] == MURO);
+            <then>
+                [reset input.bersaglio.x]
+                [reset input.bersaglio.y]
+            </then>]
+    </routine>
+
+    <!-- Nuovo livello -->
+    <job nuovo_livello>
+        [reset mappa.griglia]
+        [reset giocatore.x]
+        [reset giocatore.y]
+        [reset onstage.tick]
+        [set giocatore.potenziato = false]
+        [cycle source=Fantasma.instances; item=f;
+            <loop>
+                [test condition=(onstage.livello >= f.livello_attivo);
+                    <then>
+                        [set f.attivo = true]
+                        [reset f.x]
+                        [reset f.y]
+                    </then>]
+            </loop>]
+    </job>
+
+    <!-- Fine partita -->
+    <job fine_partita>
+        [set onstage.stato = "game_over"]
+        [reset giocatore]
+        [reset onstage]
+    </job>
+
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION EVENTI                                               -->
+<!-- ============================================================ -->
+
+<section eventi>
+
+    <!-- Input utente — movimento Pacman -->
+    <when event=periferiche.keyboard.arrow;
+          active=condition(onstage.stato == "in_corso")>
+        [routine logica.movimento_valido;
+            nuovo_x=(giocatore.x + event.delta_x);
+            nuovo_y=(giocatore.y + event.delta_y)]
+    </when>
+
+    <!-- Game loop — movimento fantasmi e collisioni -->
+    <when event=runtime.tick>
+        [set onstage.tick = (onstage.tick + 1)]
+        [cycle source=Fantasma.instances; item=f;
+            <loop>
+                [test condition=(onstage.tick mod f.velocita == 0
+                             AND f.attivo == true);
+                    <then>
+                        [routine logica.muovi_fantasma; bersaglio=f]
+                    </then>]
+            </loop>]
+        [job logica.controlla_collisioni]
+    </when>
+
+    <!-- Eventi di sistema -->
+    <when event=sistema.*>
+        [match target=event.type;
+            <case value="sistema.livello_completato">
+                [set onstage.livello = (onstage.livello + 1)]
+                [job logica.nuovo_livello]
+            </case>
+            <case value="sistema.game_over">
+                [job logica.fine_partita]
+            </case>
+            <case value="sistema.pacman_potenziato">
+                [delay 5000;
+                    <then>
+                        [set giocatore.potenziato = false]
+                    </then>]
+            </case>]
+    </when>
+
+</section>
