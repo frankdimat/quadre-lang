@@ -1,6 +1,7 @@
 # Quadre Language — Reference Guide v0.1
 
 > *Un linguaggio dichiarativo e reattivo per WebGames e WebApp*
+> *creato e ideato da Francesco Di Matteo (frankdimat@gmail.com)*
 
 ---
 
