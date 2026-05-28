@@ -507,7 +507,7 @@ Sequenza nominata senza parametri. Esiste per evitare ripetizioni tecniche — n
 ```xml
 [var nome: tipo = valore]
 ```
-## 46. Return — `<return>` e `[return]`
+### 23bis. Return — `<return>` e `[return]`
 
 Quadre distingue due forme di ritorno, entrambe runtime, ma con semantica differente:
 
