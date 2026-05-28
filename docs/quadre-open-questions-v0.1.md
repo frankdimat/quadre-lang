@@ -52,27 +52,57 @@ nulla di esplicito — il comportamento corretto è automatico.
 
 ## 3. Ricorsione
 
-**Problema:** La ricorsione diretta o indiretta tra routine non è definita. Nel modello attuale i job sono accodati sequenzialmente — una ricorsione infinita riempirebbe la coda senza controllo.
+**Problema:** La ricorsione diretta o indiretta tra routine non è definita. 
+Nel modello attuale i job sono accodati sequenzialmente — una ricorsione 
+infinita riempirebbe la coda senza controllo.
 
 **Decisione v0.1:** Ricorsione **non supportata**.
 
-**Proposta per versioni future:**
+**Caso d'uso reale — flood fill nel Campo Minato:**
+
+Il caso più naturale che richiede ricorsione è la rivelazione a cascata 
+delle celle vuote adiacenti. Senza ricorsione questo algoritmo non è 
+esprimibile in modo pulito:
+
 ```xml
-<routine fattoriale max_depth=100>
-    [test condition=(input.n <= 1);
+<routine rivela_cella max_depth=64>
+    [var r = input.r]
+    [var c = input.c]
+
+    <!-- Se fuori limiti o già rivelata, esci -->
+    [test condition=(r < 0 OR r >= RIGHE OR c < 0 OR c >= COLONNE);
+        <then>[return]</then>]
+    [test condition=(campo.visibile[r][c] != NASCOSTA);
+        <then>[return]</then>]
+
+    <!-- Rivela la cella -->
+    [set campo.visibile[r][c] = VUOTA_RIVELATA]
+    [set partita.celle_rivelate = (partita.celle_rivelate + 1)]
+
+    <!-- Se vuota, rivela ricorsivamente le adiacenti -->
+    [test condition=(campo.valori[r][c] == 0);
         <then>
-            <return 1></return>
-        </then>
-        <else>
-            [var sub = routine(fattoriale; n=(input.n - 1))]
-            <return (input.n * sub)></return>
-        </else>]
+            [routine rivela_cella; r=(r-1); c=(c-1)]
+            [routine rivela_cella; r=(r-1); c=c]
+            [routine rivela_cella; r=(r-1); c=(c+1)]
+            [routine rivela_cella; r=r;     c=(c-1)]
+            [routine rivela_cella; r=r;     c=(c+1)]
+            [routine rivela_cella; r=(r+1); c=(c-1)]
+            [routine rivela_cella; r=(r+1); c=c]
+            [routine rivela_cella; r=(r+1); c=(c+1)]
+        </then>]
 </routine>
 ```
 
-Con `max_depth` come limite esplicito di profondità — genera errore se superato.
+`max_depth=64` su una griglia 8x8 è sufficiente — il flood fill 
+non può scendere più in profondità del numero totale di celle.
 
-**Stato:** Da valutare per v0.3+.
+**Proposta per v0.2:** Supporto alla ricorsione con limite esplicito 
+`max_depth` dichiarato nel tag della routine. Il runtime genera un 
+errore esplicito se il limite viene superato.
+
+**Stato:** Da implementare in v0.2. Il campo minato è l'esempio 
+di riferimento per questa feature.
 
 ---
 
