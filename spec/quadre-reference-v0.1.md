@@ -507,35 +507,85 @@ Sequenza nominata senza parametri. Esiste per evitare ripetizioni tecniche — n
 ```xml
 [var nome: tipo = valore]
 ```
-### 23b. Return `<return>` e `[return]`
+## 46. Return — `<return>` e `[return]`
 
-**`<return>` — valore di ritorno da routine**
+Quadre distingue due forme di ritorno, entrambe runtime, ma con semantica differente:
 
-```xml
+| Forma | Tipo | Scopo |
+|---|---|---|
+| `<return>` | nodo runtime semantico | restituzione di un valore |
+| `[return]` | istruzione runtime di controllo | uscita immediata dal flusso |
+
+Le due istruzioni non sono intercambiabili.
+
+---
+
+### `<return>` — restituzione di valore da routine
+
+```quadre
 <routine somma>
     [var risultato = (input.a + input.b)]
     <return risultato></return>
 </routine>
 
-<!-- Chiamata con valore di ritorno -->
 [var totale = routine(somma; a=5; b=3)]
 ```
 
-Semantica: termina immediatamente la routine e restituisce il valore al chiamante. Se la routine termina senza `<return>`, restituisce `null`.
+Una routine può avere più `<return>` — il primo eseguito termina immediatamente.
 
-**`[return]` — uscita anticipata da job**
+```quadre
+<routine massimo>
+    [test condition=(input.a > input.b);
+        <then><return input.a></return></then>]
+    <return input.b></return>
+</routine>
+```
 
-```xml
+Se la routine termina senza `<return>`, il valore restituito è `null`.
+
+---
+
+### `[return]` — uscita anticipata
+
+Interrompe immediatamente il job, la routine o il blocco corrente senza restituire alcun valore. Usato come guardia di errore o early exit.
+
+```quadre
 <job processa_dati>
     [test condition=(errore == true);
-        <then>
-            [return]
-        </then>]
-    <!-- continua solo se nessun errore -->
+        <then>[return]</then>]
+    [job continua_elaborazione]
 </job>
 ```
 
-Semantica: termina immediatamente il job senza restituire alcun valore. Se usato dentro un `[cycle]`, esce dall'intero job — non solo dal ciclo corrente.
+**Nota:** dentro un `[cycle]`, `[return]` termina l'intero job — non solo il ciclo.
+Per interrompere solo il ciclo si usa `[break]` *(roadmap v0.2)*.
+
+---
+
+### Differenza concettuale
+
+| | `<return>` | `[return]` |
+|---|---|---|
+| Restituisce un valore | sì | no |
+| Termina il flusso | sì | sì |
+| Usato in | routine | job / routine / cycle |
+| Equivalente classico | `return value` | `return;` |
+
+---
+
+### Nota sul dualismo — tag statici e tag runtime
+
+In Quadre i tag `< >` possono essere sia statici che runtime.
+La distinzione non è tra compile-time e runtime, ma tra:
+
+| Sintassi | Ruolo |
+|---|---|
+| `[ ]` | azione, effetto, controllo |
+| `< >` | nodo semantico o strutturale |
+
+Esempi: `[set]` modifica lo stato — `[return]` interrompe il flusso —
+`<return>` produce un valore — `<then>` e `<else>` organizzano i rami —
+`<loop>` definisce il corpo logico di un'iterazione.
 
 **`[return condition=...; value=...]` — return condizionale** *(roadmap v0.2)*
 
