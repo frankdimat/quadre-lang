@@ -507,7 +507,41 @@ Sequenza nominata senza parametri. Esiste per evitare ripetizioni tecniche — n
 ```xml
 [var nome: tipo = valore]
 ```
+### 23b. Return `<return>` e `[return]`
 
+**`<return>` — valore di ritorno da routine**
+
+```xml
+<routine somma>
+    [var risultato = (input.a + input.b)]
+    <return risultato></return>
+</routine>
+
+<!-- Chiamata con valore di ritorno -->
+[var totale = routine(somma; a=5; b=3)]
+```
+
+Semantica: termina immediatamente la routine e restituisce il valore al chiamante. Se la routine termina senza `<return>`, restituisce `null`.
+
+**`[return]` — uscita anticipata da job**
+
+```xml
+<job processa_dati>
+    [test condition=(errore == true);
+        <then>
+            [return]
+        </then>]
+    <!-- continua solo se nessun errore -->
+</job>
+```
+
+Semantica: termina immediatamente il job senza restituire alcun valore. Se usato dentro un `[cycle]`, esce dall'intero job — non solo dal ciclo corrente.
+
+**`[return condition=...; value=...]` — return condizionale** *(roadmap v0.2)*
+
+```xml
+[return condition=(x > 10); value=x]
+```
 Esiste solo per la durata del blocco corrente. Corrispettivo liquido di `<var>`.
 
 ---
