@@ -5,27 +5,33 @@
 
 ---
 
-## 1. Matrici dinamiche
+## 1. Matrici: creazione e binding reattivo
 
-**Problema:** La sintassi attuale supporta solo matrici statiche dichiarate inline.
+### 1.1 Creazione con parametri *(v0.1)*
 
 ```xml
-<!-- Attuale — solo statico -->
-<var griglia: matrix = [[1,0],[0,1]]></var>
+<var griglia: matrix = matrix(10; 10; 0)></var>
 ```
 
-**Proposta per v0.2:**
-```xml
-<!-- Matrice dinamica con valore iniziale -->
-<var campo: matrix = matrix(10; 10; 0)></var>
-```
+Parametri: righe, colonne, valore iniziale di ogni cella.
 
-Dove i parametri sono: righe, colonne, valore iniziale di ogni cella.
+### 1.2 Binding reattivo per celle *(v0.2 — da definire)*
 
-**Stato:** Da definire e aggiungere alla spec.
+Quando si modifica una singola cella con `[set m[r][c] = valore]`, il rendering 
+dell'interfaccia aggiorna automaticamente **solo quella cella** — non l'intera matrice. 
+Questo è essenziale per performance su griglie grandi con game loop a 60 tick/s.
 
----
+Il runtime distingue automaticamente due casi:
 
+| Operazione | Aggiornamento UI |
+|---|---|
+| `[set m[r][c] = valore]` | incrementale — solo la cella modificata |
+| `[reset m]` | totale — tutta la matrice |
+| `[set m = clone(...)]` | totale — tutta la matrice |
+
+**Decisione proposta:** il runtime traccia internamente quale operazione ha generato 
+il cambiamento e ottimizza il ridisegno di conseguenza. Il programmatore non deve fare 
+nulla di esplicito — il comportamento corretto è automatico.
 ## 2. Ciclo `[while]`
 
 **Problema:** Non esiste un costrutto per loop condizionali. `[cycle]` copre il caso `for` (range numerico o collezione), ma non il caso `while` (condizione booleana).
