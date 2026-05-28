@@ -32,25 +32,10 @@ Il runtime distingue automaticamente due casi:
 **Decisione proposta:** il runtime traccia internamente quale operazione ha generato 
 il cambiamento e ottimizza il ridisegno di conseguenza. Il programmatore non deve fare 
 nulla di esplicito — il comportamento corretto è automatico.
-## 2. Ciclo `[while]`
-
-**Problema:** Non esiste un costrutto per loop condizionali. `[cycle]` copre il caso `for` (range numerico o collezione), ma non il caso `while` (condizione booleana).
-
-**Proposta per v0.2:**
-```xml
-[while condition=(x > 0);
-    <loop>
-        [set x = (x - 1)]
-    </loop>]
-```
-
-**Workaround attuale:** Usare `[watch]` per reagire ai cambiamenti di variabile, o `[cycle]` con un range sufficientemente grande.
-
-**Stato:** Lacuna confermata — da aggiungere in v0.2.
 
 ---
 
-## 3. Ricorsione
+## 2. Ricorsione
 
 **Problema:** La ricorsione diretta o indiretta tra routine non è definita. 
 Nel modello attuale i job sono accodati sequenzialmente — una ricorsione 
@@ -106,7 +91,7 @@ di riferimento per questa feature.
 
 ---
 
-## 4. Accesso a coordinate su eventi mouse in griglia
+## 3. Accesso a coordinate su eventi mouse in griglia
 
 **Problema:** Quando un `<when event=periferiche.mouse.click>` ha come target un elemento con `render="matrix"`, manca un modo per sapere su quale cella è avvenuto il click.
 
@@ -135,7 +120,7 @@ Aggiungere proprietà native all'oggetto `event` quando il target è una griglia
 
 ---
 
-## 5. Renderer personalizzati
+## 4. Renderer personalizzati
 
 **Problema:** `render="matrix"` è l'unico renderer predefinito. Per giochi con grafica personalizzata (es. campo minato con icone diverse, mappe con terreni multipli) serve un meccanismo per definire renderer custom.
 
@@ -167,45 +152,7 @@ Usato poi in:
 
 ---
 
-## 6. `<return>` e `[return]`
-
-**Problema:** Il linguaggio v0.1 non ha un meccanismo di ritorno da routine o di uscita anticipata da job.
-
-**Proposta approvata per v0.1:**
-
-`<return>` — valore di ritorno da routine (tag solido):
-```xml
-<routine somma>
-    [var risultato = (input.a + input.b)]
-    <return risultato></return>
-</routine>
-
-[var totale = routine(somma; a=5; b=3)]
-```
-
-`[return]` — uscita anticipata da job (verbo liquido):
-```xml
-<job processa_dati>
-    [test condition=(errore == true);
-        <then>
-            [return]
-        </then>]
-    <!-- continua solo se nessun errore -->
-</job>
-```
-
-**Nota semantica importante:** `[return]` dentro un `[cycle]` esce dall'intero job, non solo dal ciclo corrente.
-
-`[return condition=...; value=...]` — return condizionale *(roadmap v0.2)*:
-```xml
-[return condition=(x > 10); value=x]
-```
-
-**Stato:** Da aggiungere alla reference v0.1 e all'Appendice A.
-
----
-
-## 7. Tipi mancanti
+## 5. Tipi mancanti
 
 I seguenti tipi potrebbero essere necessari per applicazioni reali:
 
@@ -219,7 +166,7 @@ I seguenti tipi potrebbero essere necessari per applicazioni reali:
 
 ---
 
-## 8. Gestione degli errori
+## 6. Gestione degli errori
 
 **Problema:** Non esiste un meccanismo per gestire errori a runtime (tipo incompatibile, indice fuori range, divisione per zero).
 
